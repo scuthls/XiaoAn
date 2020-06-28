@@ -1,0 +1,39 @@
+{
+  "pages":[ 
+    "pages/index/index",
+    "pages/user/index",
+    "pages/news/index",
+    "pages/login/index",
+    "pages/auth/index"
+  ],
+  "window":{
+    "backgroundTextStyle":"light",
+    "navigationBarBackgroundColor": "#fff",
+    "navigationBarTitleText": "智能小安",
+    "navigationBarTextStyle":"black"
+  },
+  "sitemapLocation": "sitemap.json",
+  "tabBar": {
+    "list": [{
+      "pagePath": "pages/index/index",
+      "text": "您的小安",
+      "iconPath": "icon/home1.png",
+      "selectedIconPath": "icon/home2.png"
+    },
+    {
+      "pagePath": "pages/news/index",
+      "text": "资讯",
+      "iconPath": "icon/result1.png",
+      "selectedIconPath": "icon/result2.png"
+    },
+    {
+      "pagePath": "pages/user/index",
+      "text": "个人中心",
+      "iconPath": "icon/mine1.png",
+      "selectedIconPath": "icon/mine2.png"
+    }
+  ],
+  "selectedColor": "#5F9EA0",
+  "position": "top"
+  }
+}
