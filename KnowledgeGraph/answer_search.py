@@ -1,7 +1,26 @@
 from py2neo import Graph
 
 class AnswerSearcher:
+    def to_json(self):
+        filenames = os.listdir('.\\data')
+        for file in filenames:
+            _df = pd.read_excel('.\\data\{}'.format(file))
+            _json = []
+            for i in range(len(_df)):
+                dic = {}
+                for j in _df:
+                    if str(_df[j][i]) != 'nan':
+                        dic[j] = str(_df[j][i])
+                _json.append(dic)
+
+            filename = '.\json\\' + file[:-4] + 'json'
+
+            with open(filename, 'w', encoding='utf-8') as f:
+                json.dump(_json, f, ensure_ascii=False, indent=4)
+        return
+
     def __init__(self):
+        self.to_json()
         self.g = Graph(
             host="127.0.0.1",
             http_port=7687,
