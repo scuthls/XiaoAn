@@ -31,7 +31,7 @@ class FinanceGraph:
             http_port=7474,    #7687
             user="neo4j",   #neo4j
             password="hsbc123456")    #admin
-        self.g.run('MATCH (n) OPTIONAL MATCH (n)-[r]-() DELETE n,r')
+        #self.g.run('MATCH (n) OPTIONAL MATCH (n)-[r]-() DELETE n,r')
 
     def read_nodes(self):
         # 节点
@@ -1361,6 +1361,6 @@ class FinanceGraph:
 
 if __name__ == '__main__':
     handler = FinanceGraph()
-    handler.create_graphnodes()
+    #handler.create_graphnodes()
     handler.create_graphrels()
     handler.export_data()
