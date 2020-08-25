@@ -1,31 +1,12 @@
 from py2neo import Graph
 
 class AnswerSearcher:
-    def to_json(self):
-        filenames = os.listdir('.\\data')
-        for file in filenames:
-            _df = pd.read_excel('.\\data\{}'.format(file))
-            _json = []
-            for i in range(len(_df)):
-                dic = {}
-                for j in _df:
-                    if str(_df[j][i]) != 'nan':
-                        dic[j] = str(_df[j][i])
-                _json.append(dic)
-
-            filename = '.\json\\' + file[:-4] + 'json'
-
-            with open(filename, 'w', encoding='utf-8') as f:
-                json.dump(_json, f, ensure_ascii=False, indent=4)
-        return
-
     def __init__(self):
-        self.to_json()
         self.g = Graph(
-            host="127.0.0.1",
-            http_port=7687,
-            user="neo4j",
-            password="admin")
+            host="39.100.119.153",    #127.0.0.1
+            http_port=7474,    #7687
+            user="neo4j",   #neo4j
+            password="hsbc123456")    #admin
         self.num_limit = 20
 
     # 执行cypher查询，并返回相应结果
@@ -47,7 +28,7 @@ class AnswerSearcher:
 
     # 根据对应的qustion_type，调用相应的回复模板
     def answer_prettify(self, question_type, answers, question):
-        final_answer = []
+        final_answer = ''
         if not answers:
             return ''
         if question_type == 'check':
@@ -78,36 +59,126 @@ class AnswerSearcher:
             final_answer = '{0}的定义为：{1}'.format(name, desc)
 
         elif question_type == 'notice_attribution':
+            print(question_type)
+            print(answers)
             name = answers[0]['m.名词']
-            desc = [i['m.注意事项'] for i in answers]
-            final_answer = '{0}产品需要注意的事项有:\n{1}'.format(name, '；\n'.join(list(set(desc))[:self.num_limit]))
+            desc = ''
+            nature = ''
+            user = ''
+            openform=''
+            type=''
+
+            for i in answers:
+                try:
+                    desc = '定义为' + i['m.定义'] + '\n'
+                except:
+                    pass
+                try:
+                    nature = '特性为' + i['m.特性'] + '\n'
+                except:
+                    pass
+                try:
+                    user = '适用人群为' + i['m.适用人群']+ '\n'
+                except:
+                    pass
+                try:
+                    openform = '开放形态为' + i['m.开放形态'] + '\n'
+                except:
+                    pass
+                try:
+                    type = '产品类型为' + i['m.产品类型']
+                except:
+                    pass
+
+                final_answer += '{0}产品需要注意的事项有:\n{1}{2}{3}{4}{5}'.format(name, desc, nature, user, openform, type)
 
         elif question_type == 'notice_product':
             name = answers[0]['m.产品名称']
-            desc = [i['m.名词'] for i in answers]
-            notice = [i['m.注意事项'] for i in answers]
-            final_answer += '{0}属于{1}的产品，需要注意的事项有：\n{2}'.format(name, '、'.join(list(set(desc))),
-                                                                '；\n'.join(list(set(notice))))
+            print(answers)
+            desc = ''
+            desc1 = ''
+            nature = ''
+            user = ''
+            openform=''
+            type=''
+            for i in answers:
+                try:
+                    desc = i['n.名词']
+                except:
+                    pass
+                try:
+                    desc1 = '的定义为' + i['n.定义'] + '\n'
+                except:
+                    pass
+                try:
+                    nature = '特性为' + i['n.特性'] + '\n'
+                except:
+                    pass
+                try:
+                    user = '适用人群为' + i['n.适用人群']+ '\n'
+                except:
+                    pass
+                try:
+                    openform = '开放形态为' + i['n.开放形态'] + '\n'
+                except:
+                    pass
+                try:
+                    type = '产品类型为' + i['n.产品类型']
+                except:
+                    pass
+
+            order = 1
+            if nature !='':
+                nature = '({})'.format(order) + nature
+                order = order + 1
+            if user !='':
+                user = '({})'.format(order) + user
+                order = order + 1
+            if openform !='':
+                openform = '({})'.format(order) + openform
+                order = order + 1
+            if type !='':
+                type = '({})'.format(order) + type
+                order = order + 1
+
+            final_answer += '{0}属于{1}的产品，需要注意的事项有：\n{1}{2}{3}{4}{5}{6}'.format(name, desc, desc1,nature, user, openform, type)
 
         elif question_type == 'call_number':
             name = answers[0]['m.名称']
             subject = ''
-            if answers[0]['m.客服电话']:
+            print(answers)
+            try:
                 subject = answers[0]['m.客服电话']
-            elif answers[1]['m.咨询电话']:
+            except:
+                pass
+            try:
                 subject = answers[1]['m.咨询电话']
-            final_answer = '{0}的咨询电话为：{1}'.format(name, subject)
+            except:
+                pass
+            final_answer = '{0}的咨询电话为：{1}。'.format(name, subject)
 
         elif question_type == 'product_desc':
             name = answers[0]['m.产品名称']
             djbm = answers[0]['m.登记编码']
             qxlx = answers[0]['m.期限类型']
-            yjbjbz = answers[0]['m.业绩比较标准']
-            fxjg = answers[0]['m.发行机构']
-            mjfs = answers[0]['m.募集方式']
-            yxms = answers[0]['m.运作模式']
-            tzxz = answers[0]['m.投资性质']
-            final_answer = '{0}的简介如下：\n登记编码：{1}\n期限类型：{2}\n业绩比较标准：{3}\n发行机构：{4}\n募集方式：{5}\n运作模式：{6}\n投资性质：{7}'.format(
+            yjbjbz = answers[0]['m.业绩比较基准']
+            try:
+                fxjg = answers[1]['n.名称']
+            except:
+                fxjg = ''
+            try:
+                mjfs = answers[2]['n.名词']
+            except:
+                mjfs=''
+            try:
+                yxms = answers[3]['n.名词']
+            except:
+                yxms=''
+            try:
+                tzxz = answers[4]['n.名词']
+            except:
+                tzxz=''
+            final_answer = '{0}的简介如下：\n登记编码：{1}\n期限类型：{2}\n业绩比较基准：{3}\n发行机构：{4}\n募集方式：{5}\n运作模式：{6}\n投资性质：{7}'.format(
                 name, djbm, qxlx, yjbjbz, fxjg, mjfs, yxms, tzxz)
 
         elif question_type == 'bank_desc':
@@ -123,57 +194,96 @@ class AnswerSearcher:
             final_answer = '{0}的官网链接为：\n{1}'.format(name, url)
 
         elif question_type == 'area_subbank_addr':
-            bank = answers[0]['n.银行']
-            area = answers[0]['m.区域']
+            bank = answers[0]['n.名称']
+            areas =[i['m.区域'] for i in answers]
+            area = set(areas)
+            final_answer += '{0}在{1}的网点分布如下：'.format(bank, area)
             subbank = [i['m.名称'] for i in answers]
             addr = [i['m.具体地址'] for i in answers]
-            final_answer += '{0}在{1}的网点分布如下：'.format(bank, area)
-            list_zip = list(zip(subbank, addr))
-            for i in list_zip:
-                final_answer += '\n{0},具体地址：{1}'.format(i[0], i[1])
+            list_zip = list(zip(subbank, addr,areas))
+            for a in set(areas):
+                for i in list_zip:
+                    if i[2] !=a:
+                        continue
+                    if i[2] != area:
+                        area = i[2]
+                        final_answer+= '\n{0}在{1}的网点分布如下：'.format(bank, area)
+                    final_answer+= '\n{0},具体地址：{1}'.format(i[0], i[1])
+
 
         elif question_type == 'area_subbank':
             bank = answers[0]['n.名称']
-            area = answers[0]['m.区域']
+            areas =[i['m.区域'] for i in answers]
+            area = set(areas)
             subbank = [i['m.名称'] for i in answers]
-            final_answer = '{0}在{1}的支行有:\n{2}'.format(bank, area, '\n'.join(list(set(subbank))[:self.num_limit]))
+            final_answer += '{0}在{1}的支行有:'.format(bank, area)
+            list_zip = list(zip(subbank, areas))
+            for a in set(areas):
+                for i in list_zip:
+                    if i[1] != a:
+                        continue
+                    if i[1] != area:
+                        area = i[1]
+                        final_answer += '\n{0}在{1}的支行有:'.format(bank, area)
+                    final_answer += '\n{0}'.format(i[0])
 
         elif question_type == 'attribution_infos':
             attribution = answers[0]['m.名称']
             subject = [i['n.名词'] for i in answers]
-            final_answer = '{0}含有的类别有：{1}'.format(attribution, '，'.join(list(set(subject))))
+            final_answer = '{0}含有的类别有：{1}'.format(attribution, '、'.join(list(set(subject))))
 
         elif question_type == 'product_number':
             bank = answers[0]['m.名称']
+            print(answers)
             state = [i['n.产品状态'] for i in answers]
-            count = [i['count(m)'] for i in answers]
+            count = [i['count(n)'] for i in answers]
             final_answer += '{0}：'.format(bank)
             list_zip = list(zip(state, count))
+            count_all = 0
             for i in list_zip:
-                final_answer += '\n{0}产品有{1}个'.format(i[0], i[1])
+                count_all +=i[1]
+                final_answer += '\n{0}产品有{1}个，'.format(i[0], i[1])
+            final_answer += '\n所有产品总数为{0}个。'.format(count_all)
 
         elif question_type == 'subbank_number':
-            bank = answers[0]['n.名称']
-            area = answers[0]['m.区域']
-            count = answers[0]['count(r)']
-            final_answer = '{0}在{1}共有{2}个网点'.format(bank, area, count)
+            print(answers)
+            for i in answers:
+                bank = i['n.名称']
+                area = i['m.区域']
+                count = i['count(r)']
+                count_all = 0
+                if i == answers[0]:
+                    count_all += count
+                    final_answer += '{0}\n在{1}共有{2}个网点，\n'.format(bank, area, count)
+                elif i == answers[-1]:
+                    count_all += count
+                    final_answer += '在{0}共有{1}个网点，\n'.format(area, count)
+                else:
+                    count_all += count
+                    final_answer += '在{0}共有{1}个网点，\n'.format(area, count)
+            final_answer += '{0}在所查询地区的网点总共有{1}个。'.format(bank, count_all)
+
 
         elif question_type == 'product_area':
             name = answers[0]['m.产品名称']
             area = [i['n.名称'] for i in answers]
-            final_answer = '{}的销售区域为{}'.format(name, '、'.join(list(set(area))))
+            final_answer = '{}的销售区域为{}。'.format(name, '、'.join(list(set(area))))
 
         elif question_type == 'product_attribution':
+            print(answers)
             desc = [list(i.values())[-1] for i in answers]
-            final_answer = ';'.join(list(set(desc))[:self.num_limit])
+            desc1 = ['' if x == None else x for x in desc]
+            final_answer = ';'.join(list(set(desc1))[:self.num_limit])
 
         elif question_type == 'product_user':
+            print(answers)
             name = answers[0]['m.产品名称']
-            user = [i['n.适用群体'] for i in answers]
-            final_answer = '{0}的适用群体为：\n{1}'.format(name, '\n'.join(list(set(user))))
+            user = [i['n.适用人群'] for i in answers if i['n.适用人群'] !=None]
+            print(user)
+            final_answer = '{0}的适用人群为：\n{1}'.format(name, '\n'.join(list(set(user))))
 
         elif question_type == 'investment_category':
-            name = [i['m.名称'] for i in answers]
+            name = [i['m.名词'] for i in answers]
             desc = [i['n.名词'] for i in answers]
             list_zip = list(zip(name, desc))
             for i in list_zip:
@@ -183,14 +293,21 @@ class AnswerSearcher:
                     final_answer += '{0}所属类型为{1}\n'.format(i[0], i[1])
 
         elif question_type == 'if_investment_category':
-            name = answers[0]['m.名称']
+            name = answers[0]['m.名词']
             desc = answers[0]['n.名词']
             if desc:
                 final_answer = '是的！'
             else:
-                final_answer = '不对哦！'  # 功能还需改进返回准确答案
+                final_answer = '不对哦！'  # 功能还需改进返回准确答案（下方，未# test）
+                try:
+                    ansname = answers[1]['m.名词']
+                    ansdesc = answers[1]['n.名词']
+                    final_answer += '{0}所属类型为{1}。'.format(ansname, ansdesc)
+                except:
+                    pass
 
         elif question_type == 'institution_category':
+            print(answers)
             name = answers[0]['m.名称']
             desc = answers[0]['n.名词']
             final_answer = '{}所属机构类别为{}。'.format(name, desc)
@@ -207,14 +324,22 @@ class AnswerSearcher:
                 final_answer = '是的！'
             else:
                 final_answer = '不对哦！'  # 功能还需改进返回准确答案
+                try:
+                    ansname = answers[1]['m.产品名称']
+                    anstype = answers[1]['p.名词']
+                    ansattr = answers[1]['n.名称']
+                    final_answer += '{0}的{1}属性的类别为{2}。'.format(ansname, ansattr, anstype)
+                except:
+                    pass
+
 
         elif question_type == 'bank_time':
             bank = answers[0]['m.名称']
             time = answers[0]['m.营业时间']
-            final_answer = '{}的营业时间为{}。'.format(bank, time)
+            final_answer = '{}的营业时间为{}'.format(bank, time)
 
         elif question_type == 'production_time':
-            name = answers[0]['m.产品名称']
+            #name = answers[0]['m.产品名称']
             time = list(answers[0].values())[-1]
             final_answer = '{}'.format(time)
 
@@ -227,7 +352,7 @@ class AnswerSearcher:
             name = answers[0]['m.名词']
             for i in answers:
                 name1 = i['m.名词']
-                rela = i['r.差异']
+                rela = i['r.different']
                 name2 = i['n.名词']
                 if i != answers[-1]:
                     final_answer += '{}与{}之间的差异为{}。\n'.format(name1, rela, name2)
@@ -244,18 +369,39 @@ class AnswerSearcher:
             desc = answers[0]['m.特性']
             final_answer = '{}产品的特性为{}'.format(name, desc)
 
-        # elif question_type == 'recommend_category':
-        #    desc = answers[0]['m.notice']
-        #    subject = answers[0]['m.name']
-        #    final_answer = '做{0}检查的注意事项如下：\n{1}'.format(subject, desc)
+        elif question_type == 'recommend_category':
+            final_answer = '为你推荐的产品有：'
+            for i in answers:
+                desc = i['m.名词']
+                if i != answers[-1]:
+                    final_answer = + '{1}产品、'.format(desc)
+                else:
+                    final_answer = + '{1}产品。'.format(desc)
 
-        # elif question_type == 'if_recommend_category':
-        #    desc = [i['m.desc'] for i in answers]
-        #    subject = answers[0]['m.name']
-        #    final_answer = '您问的问题暂时还不能回答，先帮你介绍一下{0}吧：{1}'.format(subject, '；'.join(list(set(desc))[:self.num_limit]))
+
+        elif question_type == 'if_recommend_category':
+            name = answers[0]['m.名词']
+            desc = answers[0]['n.名词']
+            if desc:
+                final_answer = '是的！'
+            else:
+                final_answer = '不对哦！'  # 功能还需改进返回准确答案（下方，未# test）
+                final_answer += '为你推荐的产品有：'
+                try:
+                    for i in answers:
+                        desc = i['m.名词']
+                        if i == answers[0]:
+                            pass
+                        else:
+                            if i != answers[-1]:
+                                final_answer = + '{1}产品、'.format(desc)
+                            else:
+                                final_answer = + '{1}产品。'.format(desc)
+                except:
+                    pass
 
         elif question_type == 'if_buy':
-            name = answers[0]['m.理财产品']
+            name = answers[0]['m.产品名称']
             state = answers[0]['m.产品状态']
             final_answer = '{}目前状态为{}，'.format(name, state)
             if state == '在售':
@@ -263,13 +409,17 @@ class AnswerSearcher:
             else:
                 final_answer += '现在不可以购买哦！'
 
+
         return final_answer
 
 if __name__ == '__main__':
     searcher = AnswerSearcher()
-    res_sql = [{'question_type': 'check',
+    res_sql1 = [{'question_type': 'check',
                 'sql': [
                     "MATCH (m:理财产品) where m.登记编码 = 'C3132420000047' or m.产品名称 = 'C3132420000047' return m.产品名称, m.登记编码"]}]
+    res_sql = [{'question_type': 'subbank_number',
+                'sql': ["MATCH (m:支行)-[r:所属总行]->(n:银行) where (n.名称 = '汇丰银行' or '汇丰银行' in n.别名) and m.区域 CONTAINS '广东' return n.名称,m.区域,count(r)"]}]
+
     sqls = {'sqls':res_sql,'question':[]}
     print(searcher.search_main(sqls))
 

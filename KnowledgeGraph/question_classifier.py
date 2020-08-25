@@ -1,4 +1,9 @@
 import ahocorasick
+import re
+import jieba
+from fuzzywuzzy import process
+
+
 product_dict = ''
 
 class QuestionClassifier:
@@ -11,6 +16,8 @@ class QuestionClassifier:
         self.investment_wds = [i.strip() for i in open('./dict/investment.txt', encoding="utf-8") if i.strip()]
         self.investment_type_wds = [i.strip() for i in open('./dict/investment_type.txt', encoding="utf-8") if
                                     i.strip()]
+        self.operation_wds = [i.strip() for i in open('./dict/operation.txt', encoding="utf-8") if
+                                    i.strip()]
         self.raise_way_wds = [i.strip() for i in open('./dict/raise_way.txt', encoding="utf-8") if i.strip()]
         self.risk_level_wds = [i.strip() for i in open('./dict/risk_level.txt', encoding="utf-8") if i.strip()]
         self.investment_nature_wds = [i.strip() for i in open('./dict/investment_nature.txt', encoding="utf-8") if
@@ -20,17 +27,15 @@ class QuestionClassifier:
                                          i.strip()]
         self.institution_wds = [i.strip() for i in open('./dict/institution.txt', encoding="utf-8") if i.strip()]
         self.proper_noun_wds = [i.strip() for i in open('./dict/proper_noun.txt', encoding="utf-8") if i.strip()]
-        self.investment_type_wds = [i.strip() for i in open('./dict/investment_type.txt', encoding="utf-8") if
-                                    i.strip()]
         self.open_form_wds = [i.strip() for i in open('./dict/open_form.txt', encoding="utf-8") if i.strip()]
         self.type_wds = [i.strip() for i in open('./dict/type.txt', encoding="utf-8") if i.strip()]
         self.attribution_wds = [i.strip() for i in open('./dict/attribution.txt', encoding="utf-8") if i.strip()]
+        self.category_wds = [i.strip() for i in open('./dict/category.txt', encoding="utf-8") if i.strip()]
         self.user_wds = [i.strip() for i in open('./dict/user.txt', encoding="utf-8") if i.strip()]
-
 
         # 把上面所有的放在一起构造一个领域字典
         self.region_words = set(
-            self.product_wds + self.bank_wds + self.area_wds + self.subbank_wds + self.investment_wds + self.investment_type_wds + self.raise_way_wds + self.risk_level_wds + self.investment_nature_wds + self.income_type_wds + self.institution_category_wds + self.institution_wds + self.proper_noun_wds + self.investment_type_wds + self.open_form_wds + self.type_wds)
+            self.product_wds + self.bank_wds + self.area_wds + self.subbank_wds + self.investment_wds + self.investment_type_wds + self.operation_wds + self.raise_way_wds + self.risk_level_wds + self.investment_nature_wds + self.income_type_wds + self.institution_category_wds + self.institution_wds + self.proper_noun_wds + self.open_form_wds + self.type_wds+self.attribution_wds+self.category_wds+self.user_wds)
 
         # 构造领域actree
         self.region_tree = self.build_actree(list(self.region_words))
@@ -39,7 +44,7 @@ class QuestionClassifier:
         self.wdtype_dict = self.build_wdtype_dict()
 
         # print("wdtype_dict", self.wdtype_dict)
-        # 问句疑问词
+        # 问句疑问词、关键词
         self.explanation_qwds = ['理财知识', '知识', '名词', '词', '内容', '意思', '理解', '定义', '含义', '解释', '科普', '普及',
                                  '怎么理解', '怎样理解', '咋样理解', '咋理解', '明白', '了解', '知道', '是什么']  # 询问理财知识的解释或者产品介绍
 
@@ -51,14 +56,14 @@ class QuestionClassifier:
 
         self.recommend_qwds = ['适合', '哪一种', '哪种', '哪一款', '哪款', '合适', '推荐']  # 根据风险偏好 推荐适合的产品类型、性质等
 
-        self.belong_qwds = ['属于哪', '属于什么', '所属', '归属', '归于', '是什么', '是哪']  # 询问产品属性
+        self.belong_qwds = ['属于哪', '属于什么', '所属', '归属', '归于', '是什么', '是哪','是']  # 询问产品属性
 
         self.if_qwds = ['是', '为']  # 判断
 
         self.when_qwds = ['什么时候', '什么时间', '哪时', '哪个时间', '关闭', '结束', '截止', '停止', '开始', '起', '时候卖', '时候执行', '生效', '多久',
-                          '多长时间', '多少时间', '几天', '几年', '多少天', '多少年', '期限', '有效期', '时长']
+                          '多长时间', '多少时间', '几天', '几年', '多少天', '多少年', '期限', '有效期', '时长','营业时间','时间']
 
-        self.state_qwds = ['还可以买', '还赶得上', '在售', '卖完', '售完', '现在能买', ]  # 询问产品状态
+        self.state_qwds = ['还可以买', '还赶得上', '在售', '卖完', '售完', '能买', '还可以购买','还能购买','还可购买','还卖','还有卖','现在可以买','现在能买','现在卖','现在可以购买','现在可购买','现在可买']  # 询问产品状态
 
         self.how_qwds = ['怎么可', '怎样可', '咋样可', '咋可', '如何可', '怎么才', '怎样才', '咋样才', '咋才', '如何才', '要怎么', '要怎样', '要咋样', '要咋',
                          '要如何',
@@ -74,11 +79,11 @@ class QuestionClassifier:
 
         self.new_qwds = ['讯息', '信息', '新闻', '咨询']
 
-        self.who_qwds = ['对象', '哪些人', '什么人', '谁', '客户']
+        self.who_qwds = ['对象', '哪些人', '什么人', '谁', '客户','群体','人群']
 
         self.rule_qwds = ['规定', '规则', '规章', '法规', '法律', '规范']
 
-        self.where_qwds = ['位置', '分布', '地址', '哪里', '在哪', '地方', '地区']
+        self.where_qwds = ['位置', '分布', '地址', '哪里', '在哪', '地方', '地区','区域']
 
         self.call_qwds = ['联系', '电话', '号码']
 
@@ -86,7 +91,7 @@ class QuestionClassifier:
 
         self.have_qwds = ['有哪些', '哪些是', '哪几种', '哪几类', '分为', '包含', '拥有']
 
-        self.howmany_qwds = ['多少', '几个', '几类', '几种']
+        self.howmany_qwds = ['多少', '几个', '几类', '几种','数量','数目','个数','总数']
 
         #self.high_item_qwds = ['最高', '几个', '几类', '几种']
 
@@ -101,7 +106,7 @@ class QuestionClassifier:
         data = {}
         data['question'] = question
         finance_dict = self.check_finance(question)
-        # medical_dict: {'肝硬化': ['disease'], '乙肝': ['disease']}
+        # medical_dict: {'净值型': ['产品类型',属性类别'], '非净值型': ['产品类型',属性类别']}
         # print(medical_dict)
 
         if not finance_dict:  # 如果当前问题没有查到实体，就查看之前问题有没有保存实体
@@ -119,13 +124,15 @@ class QuestionClassifier:
 
         question_types = []
 
+        print(types)
+
         ## 简单的判断问句中是否有字典里的词语
-        # 检查产品合法问题
+        # 检查产品合法问题     #C1080919000230靠谱吗？
         if self.check_words(self.check_qwds, question) and ('product' in types):
             question_type = 'check'
             question_types.append(question_type)
 
-        # 名词解释问题
+        # 名词解释问题      #你可以解释一下净值型产品是什么吗？
         if self.check_words(self.explanation_qwds, question) and ('attribution' in types):
             question_type = 'explanation_attribution'
             question_types.append(question_type)
@@ -136,7 +143,7 @@ class QuestionClassifier:
             question_type = 'explanation_common'
             question_types.append(question_type)
 
-        # 询问产品注意事项问题   针对与购买产品的注意事项  针对与某一属性产品的注意事项
+        # 询问产品注意事项问题   #针对与购买产品的注意事项   针对与某一属性产品的注意事项   #C1080919000230需要注意什么？#封闭式净值型产品需要注意什么？ √
         if self.check_words(self.notice_qwds, question) and ('proper_noun' in types):
             question_type = 'notice_attribution'
             question_types.append(question_type)
@@ -147,95 +154,95 @@ class QuestionClassifier:
             question_type = 'notice_common'
             question_types.append(question_type)
 
-        # 询问银行电话
+        # 询问银行电话   #汇丰银行的电话？    √
         if self.check_words(self.call_qwds, question) and ('bank' in types or 'subbank' in types):
             question_type = 'call_number'
             question_types.append(question_type)
 
-        # 介绍产品概要信息
+        # 介绍产品概要信息    #你能给我介绍一下C1080919000230吗？ √
         if self.check_words(self.product_qwds, question) and ('product' in types):
             question_type = 'product_desc'
             question_types.append(question_type)
 
-        # 询问银行官网链接
+        # 询问银行官网链接 #汇丰银行的官网通道？   √
         if self.check_words(self.url_qwds, question) and ('bank' in types):
             question_type = 'url'
             question_types.append(question_type)
 
-        # 询问某区域某银行的支行  “广东哪里有汇丰银行”
+        # 询问某区域某银行的支行  “广东哪里有汇丰银行” √
         if self.check_words(self.where_qwds, question) and ('bank' in types and 'area' in types):
             question_type = 'area_subbank_addr'
             question_types.append(question_type)
 
-            # 询问银行在某地区的支行信息  “汇丰在广东有哪些支行/网点”
+            # 询问银行在某地区的支行信息  “汇丰银行在广东有哪些支行/网点”√    #不能问 汇丰 有多少
         if self.check_words(self.have_qwds, question) and ('bank' in types and 'area' in types):
             question_type = 'area_subbank'
             question_types.append(question_type)
 
-        # 询问理财产品某属性有哪些类
-        if self.check_words(self.how_qwds, question) and ('attribution' in types):
+        # 询问理财产品某属性有哪些类  #募集方式有哪几种？     #未test
+        if self.check_words(self.have_qwds, question) and ('attribution' in types):
             question_type = 'attribution_infos'
             question_types.append(question_type)
 
-        # 询问某银行理财产品的数量 返回在售、预售、续存的数量以及总数
-        if self.check_words(self.howmany_qwds, question) and ('bank' in types and 'areas' not in types):
+        # 询问某银行理财产品的数量 返回在售、预售、续存的数量以及总数 #汇丰银行理财产品的总数？ √
+        if self.check_words(self.howmany_qwds, question) and ('bank' in types and 'area' not in types):
             question_type = 'product_number'
             question_types.append(question_type)
 
-        # 询问某银行在某地区的总数
-        if self.check_words(self.howmany_qwds, question) and ('bank' in types and 'areas' in types):
+        # 询问某银行在某地区的总数   #汇丰银行在广东的总数？√
+        if self.check_words(self.howmany_qwds, question) and ('bank' in types and 'area' in types):
             question_type = 'subbank_number'
             question_types.append(question_type)
 
-        # 询问某理财产品销售区域
+        # 询问某理财产品销售区域   #C3132420000047的销售地点在哪？√
         if self.check_words(self.where_qwds, question) and ('product' in types):
             question_type = 'product_area'
             question_types.append(question_type)
 
-        # 询问产品的某属性所属类别
+        # 询问产品的某属性所属类别    #C3132420000047的募集方式是   #C3132420000047的业绩比较基准是 √     单独列出来的属性查询未检验
         if self.check_words(self.belong_qwds, question) and ('product' in types and 'attribution' in types):
             question_type = 'product_attribution'
             question_types.append(question_type)
 
-        # 询问某产品的面向的用户
+        # 询问某产品的面向的用户  #C3132420000047销售对象是？ √
         if self.check_words(self.who_qwds, question) and ('product' in types):
             question_type = 'product_user'
             question_types.append(question_type)
 
-        # 询问某投资资产所属资产类别
+        # 询问某投资资产所属资产类别     #未test
         if self.check_words(self.belong_qwds, question) and ('investment' in types):
             question_type = 'investment_category'
             question_types.append(question_type)
 
-        # 确认某投资资产是否属于某资产类别
+        # 确认某投资资产是否属于某资产类别    #未test
         if self.check_words(self.if_qwds, question) and ('investment' in types and 'investment_type' in types):
             question_type = 'if_investment_category'
             question_types.append(question_type)
 
-        # 询问某发行机构所属的机构类别     询问某发行机构所属的总行
+        # 询问某发行机构所属的机构类别     询问某发行机构所属的总行   #盛京银行股份有限公司所属机构类别    #未test  由于之前未创建联系
         if self.check_words(self.belong_qwds, question) and ('institution' in types):
-            if '类' in question:
+            if '类' in question or '机构' in question or '种' in question:
                 question_type = 'institution_category'
             elif '行' in question:
                 question_type = 'institution_bank'
             question_types.append(question_type)
 
-        # 判断某产品的某属性是否为某类别
+        # 判断某产品的某属性是否为某类别      #C1088220000926的募集方式是否为公募？   #未test
         if self.check_words(self.if_qwds, question) and ('product' in types and 'proper_noun' in types):
             question_type = 'if_category'
             question_types.append(question_type)
 
-        # 判断某银行营业时间
+        # 判断某银行营业时间 #汇丰银行的营业时间是？ √
         if self.check_words(self.when_qwds, question) and ('bank' in types):
             question_type = 'bank_time'
             question_types.append(question_type)
 
-        # 询问某产品的时间属性
+        # 询问某产品的时间属性   #C3132420000047的募集起始时间？ √
         if self.check_words(self.when_qwds, question) and ('product' in types and 'attribution' in types):
             question_type = 'production_time'
             question_types.append(question_type)
 
-        # 询问某属性的不同类之间的差别  问：“某个属性的不同类别之间的差异，” “某个类别和其他类别的差异”
+        # 询问某属性的不同类之间的差别  问：“某个属性的不同类别之间的差异，” “某个类别和其他类别的差异”    #未test
         if self.check_words(self.different_qwds, question) and ('proper_noun' in types):
             question_type = 'category_different'
             question_types.append(question_type)
@@ -243,27 +250,26 @@ class QuestionClassifier:
             question_type = 'attribution_different'
             question_types.append(question_type)
 
-        # 询问某属性的下的其他类别
+        # 询问某属性的下的其他类别      #请问除了净值型还有什么类型？   #未test
         if self.check_words(self.other_qwds, question) and ('proper_noun' in types):
             question_type = 'other_category'
             question_types.append(question_type)
 
-        # 询问某类型的特性
+        # 询问某类型的特性    #净值型产品的特性是什么？   √
         if self.check_words(self.nature_qwds, question) and ('proper_noun' in types):
             question_type = 'category_nature'
             question_types.append(question_type)
 
-        # 判断某类产品是否适合某类人群
-        if self.check_words(self.recommend_qwds, question) and self.check_words(self.if_qwds, question) and (
-                'user' in types):
+        # 判断某类产品是否适合某类人群    #高风险偏好人群适合净值型产品吗？     #未test
+        if self.check_words(self.recommend_qwds, question)  and ('user' in types) and ('proper_noun' in types):
             question_type = 'if_recommend_category'
             question_types.append(question_type)
-            # 寻求产品类型推荐    具体产品不做推荐哦！
+        # 寻求产品类型推荐    具体产品不做推荐哦！     #哪一种产品适合高风险偏好的我呢？   #未test
         elif self.check_words(self.recommend_qwds, question) and ('user' in types):
             question_type = 'recommend_category'
             question_types.append(question_type)
 
-        # 询问某产品现在可以购买否
+        # 询问某产品现在可以购买否       #C3132420000047现在可以购买吗?   √
         if self.check_words(self.state_qwds, question) and ('product' in types):
             question_type = 'if_buy'
             question_types.append(question_type)
@@ -280,7 +286,7 @@ class QuestionClassifier:
         if question_types == [] and ('proper_noun' in types):
             question_types = ['explanation_noun']
 
-        # 若没有查到相关的外部查询信息，那么则将该检查项指标的描述信息返回
+        # 若没有查到相关的外部查询信息，那么则将该银行的描述信息返回
         if question_types == [] and ('bank' in types):
             question_types = ['bank_desc']
 
@@ -296,6 +302,21 @@ class QuestionClassifier:
             actree.add_word(word, (index, word))
         actree.make_automaton()
         return actree
+
+
+    #模糊匹配
+    def finders(self,user_input):
+        self.region_words
+        sugge = []
+        pat = '.*'.join(user_input)
+        regex = re.compile(pat)
+        for item in data:
+            match = regex.search(item)
+            if match:
+                sugge.append(item)
+        return sugge
+
+
 
     # 构造词对应的类型
     def build_wdtype_dict(self):
@@ -314,6 +335,8 @@ class QuestionClassifier:
                 wd_dict[wd].append('investment')
             if wd in self.investment_type_wds:
                 wd_dict[wd].append('investment_type')
+            if wd in self.operation_wds:
+                wd_dict[wd].append('operation')
             if wd in self.raise_way_wds:
                 wd_dict[wd].append('raise_way')
             if wd in self.risk_level_wds:
@@ -328,14 +351,14 @@ class QuestionClassifier:
                 wd_dict[wd].append('institution')
             if wd in self.proper_noun_wds:
                 wd_dict[wd].append('proper_noun')
-            if wd in self.investment_type_wds:
-                wd_dict[wd].append('investment_type')
             if wd in self.open_form_wds:
                 wd_dict[wd].append('open_form')
             if wd in self.type_wds:
                 wd_dict[wd].append('type')
             if wd in self.attribution_wds:
                 wd_dict[wd].append('attribution')
+            if wd in self.category_wds:
+                wd_dict[wd].append('category')
             if wd in self.user_wds:
                 wd_dict[wd].append('user')
         return wd_dict
@@ -343,11 +366,26 @@ class QuestionClassifier:
     # 问句过滤
     def check_finance(self, question):
         region_wds = []
-        # iter方法返回一个元组形如(1, (5822, '乙肝'))
+        # iter方法返回一个元组形如(1, (5822, '净值型'))
         for i in self.region_tree.iter(question):
             wd = i[1][1]
             region_wds.append(wd)
-        # 这一步操作是用来去掉，例如["硬化", "肝硬化"]，我们想要的明显是长的那个词，我们要把属于子集的词给去掉。
+
+        '''
+        #模糊匹配，提取出句子中对应的实体
+        ls = jieba.lcut(question)   #精确模式
+        for i in ls:
+            if len(i) == 1:
+                continue
+            choices = self.region_words
+            pro = process.extract(i, choices)
+            for p in pro:
+                if p[1] != 0:
+                    wd1=p[0]
+                    region_wds.append(wd1)
+        '''
+
+        # 这一步操作用来去掉，例如["净值", "净值型"]，因为想要的明显是长的那个词，所以把属于子集的词给去掉。
         stop_wds = []
         for wd1 in region_wds:
             for wd2 in region_wds:
@@ -355,11 +393,24 @@ class QuestionClassifier:
                     stop_wds.append(wd1)
         final_wds = [i for i in region_wds if i not in stop_wds]
         final_dict = {i: self.wdtype_dict.get(i) for i in final_wds}
+        global product_dict
+        if final_dict:  # 如果当前的问题里有新的实体，则更新
+            product_dict = final_dict
+        # final_dict形如：{'净值型': ['属性类别']}
+        return final_dict
+
+        '''
+        stop_wds = []
+        for wd1 in region_wds:
+            stop_wds.append(wd1)
+        final_wds = [i for i in region_wds if i not in stop_wds]
+        final_dict = {i: self.wdtype_dict.get(i) for i in final_wds}
         global diseases_dict
         if final_dict:  # 如果当前的问题里有新的实体，则更新
             diseases_dict = final_dict
         # final_dict形如：{'乙肝': ['disease']}
         return final_dict
+        '''
 
     # 基于特征词进行分类
     def check_words(self, wds, sent):

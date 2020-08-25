@@ -1,6 +1,6 @@
-from pythonCode.KnowledgeGraph.question_classifier import *
-from pythonCode.KnowledgeGraph.question_parser import *
-from pythonCode.KnowledgeGraph.answer_search import *  #导入自写库
+from question_classifier import *
+from question_parser import *
+from answer_search import *
 
 class ChatBotGraph:
     def __init__(self):
@@ -15,6 +15,7 @@ class ChatBotGraph:
             return answer
         res_sql = self.parser.parser_main(res_classify)
         final_answers = self.searcher.search_main(res_sql)
+        print(final_answers)
         if not final_answers:
             return "这个问题知识库中暂时没有，知识库将持续更新，敬请期待！"
         else:
@@ -22,6 +23,7 @@ class ChatBotGraph:
 
 if __name__ == '__main__':
     handler = ChatBotGraph()
-    question = input('input an question:')
-    answers = handler.chat_main(question)
-    print(answers)
+    while 1:
+        question = input('input an question:')
+        answers = handler.chat_main(question)
+        print(answers)

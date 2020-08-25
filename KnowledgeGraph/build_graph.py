@@ -2,15 +2,36 @@ import pandas as pd
 import os
 import json
 from py2neo import Graph, Node
-import numpy as np
+
+
 class FinanceGraph:
+    def to_json(self):
+        filenames = os.listdir('.\\data')
+        print(filenames)
+        for file in filenames:
+            _df = pd.read_excel('.\\data\{}'.format(file))
+            _json = []
+            for i in range(len(_df)):
+                dic = {}
+                for j in _df:
+                    if str(_df[j][i]) != 'nan':
+                        dic[j] = str(_df[j][i])
+                _json.append(dic)
+
+            filename = '.\json\\' + file[:-4] + 'json'
+
+            with open(filename, 'w', encoding='utf-8') as f:
+                json.dump(_json, f, ensure_ascii=False, indent=4)
+        return
+
     def __init__(self):
+        self.to_json()
         self.g = Graph(
-            host="127.0.0.1",
-            http_port=7687,
-            user="neo4j",
-            password="admin")
-        #self.g.run('MATCH (n) OPTIONAL MATCH (n)-[r]-() DELETE n,r')
+            host="39.100.119.153",    #127.0.0.1
+            http_port=7474,    #7687
+            user="neo4j",   #neo4j
+            password="hsbc123456")    #admin
+        self.g.run('MATCH (n) OPTIONAL MATCH (n)-[r]-() DELETE n,r')
 
     def read_nodes(self):
         # 节点
@@ -27,7 +48,7 @@ class FinanceGraph:
         investment_natures = []  # 投资性质
         income_types = []  # 收益类型
         institution_categories = []  # 发行机构类别
-        institutions = []  # 发行机构
+        institutions = []  # 发行/托管机构
         proper_nouns = []  # 说明书专有名词
         open_forms = []  # 开放形态
         types = []  # 类型  ——净值型 、 非净值型
@@ -39,7 +60,11 @@ class FinanceGraph:
         categories = []  # 属性类别
         categories_another_name = []  # 属性类别别名
         #
+        users = []    #用户类型
+        users_another_name = []     #用户类型别名
 
+
+        user_infos = []   #用户类型信息
         product_infos = []  # 理财产品信息
         bank_infos = []  # 银行信息
         subbank_infos = []  # 支行信息
@@ -50,7 +75,7 @@ class FinanceGraph:
         income_type_infos = []  # 收益类型信息
         raise_way_infos = []  # 募集方式信息
         risk_level_infos = []  # 风险等级信息
-        institution_category_infos = []  # 发行机构类别信息
+        institution_category_infos = []  # 机构类别信息
 
         # 专有名词解释 包括上面的部分列表
         cost_infos = []  # 理财费用信息
@@ -78,10 +103,13 @@ class FinanceGraph:
         rels_raise_way = []  # 产品募集方式
         rels_risk_level = []  # 产品的风险等级
         rels_product_institution = []  # 产品的发行机构
+        rels_product_institution_trusteeship=[] #产品的托管机构
         rels_institution_category = []  # 发行机构的类别
         rels_institution_bank = []  # 发行机构所属总行
         rels_open_form = []  # 产品开放形态
         rels_type = []  # 产品类型 ——净值型 、 非净值型
+        rels_user_type = []  # 适用人群
+        rels_investment_type1=[] #标的资产所属资产类型
 
         # 7.4完善
         rels_attribution_category = []  # 属性拥有的类别
@@ -90,6 +118,11 @@ class FinanceGraph:
         count = 0
         jsonFile = open('.\json\product.json', encoding='utf-8')
         jsonData = json.load(jsonFile)
+        jsonFile1 = open('.\\json\\bank.json', encoding='utf-8')
+        jsonData1 = json.load(jsonFile1)
+        jsonFile2 = open('.\json\institution_category.json', encoding='utf-8')
+        jsonData2 = json.load(jsonFile2)
+
         for data in jsonData:
             product_dict = {}
             count += 1
@@ -118,15 +151,16 @@ class FinanceGraph:
             product_dict['预期最低收益率'] = ''
             product_dict['认购价格'] = ''
 
-            # 7.4添加 未实现
             product_dict['投资资产种类及比例'] = ''
-            product_dict['托管机构'] = ''
             product_dict['资金投向地区'] = ''
+
+
+            '''
             product_dict['投资资产实时信息'] = ''
             product_dict['业绩表现'] = ''
             product_dict['产品评价'] = ''
             product_dict['包含费用'] = ''
-            product_dict['业绩表现'] = ''
+            '''
             # ...
 
             # 属性添加
@@ -139,6 +173,7 @@ class FinanceGraph:
 
             if '服务对象' in data:
                 product_dict['服务对象'] = data['产品类别']
+                users.append([product, data['服务对象']])
 
             if '期限类型' in data:
                 product_dict['期限类型'] = data['期限类型']
@@ -167,8 +202,8 @@ class FinanceGraph:
             if '业务结束日' in data:
                 product_dict['业务结束日'] = data['业务结束日']
 
-            if '实际天数' in data:
-                product_dict['实际天数'] = data['实际天数']
+            if '实际天数（天）' in data:
+                product_dict['实际天数'] = data['实际天数（天）']
 
             if '初始净值' in data:
                 product_dict['初始净值'] = data['初始净值']
@@ -179,17 +214,40 @@ class FinanceGraph:
             if '累计净值' in data:
                 product_dict['累计净值'] = data['累计净值']
 
-            if '最近一次兑付收益率' in data:
-                product_dict['最近一次兑付收益率'] = data['最近一次兑付收益率']
+            if '最近一次兑付收益率(%)' in data:
+                product_dict['最近一次兑付收益率'] = data['最近一次兑付收益率(%)']
 
-            if '预期最高收益率' in data:
-                product_dict['预期最高收益率'] = data['预期最高收益率']
+            if '预期最高收益率(%)' in data:
+                product_dict['预期最高收益率'] = data['预期最高收益率(%)']
 
-            if '预期最低收益率' in data:
-                product_dict['预期最低收益率'] = data['预期最低收益率']
+            if '预期最低收益率(%)' in data:
+                product_dict['预期最低收益率'] = data['预期最低收益率(%)']
 
             if '认购价格' in data:
                 product_dict['认购价格'] = data['认购价格']
+
+            if '投资种类及比例' in data:
+                product_dict['投资资产种类及比例'] = data['投资种类及比例']
+
+            if '资金投向地区' in data:
+                product_dict['资金投向地区'] = data['资金流向']
+
+
+            '''
+            if '投资资产实时信息' in data:
+                product_dict['投资资产实时信息'] = data['投资资产实时信息']
+
+            if '业绩表现' in data:
+                product_dict['业绩表现'] = data['业绩表现']
+
+            if '产品评价' in data:
+                product_dict['产品评价'] = data['产品评价']
+
+            if '包含费用' in data:
+                product_dict['包含费用'] = data['包含费用']
+            '''
+
+
 
             # 关系添加
             if '投资资产类型' in data:
@@ -223,19 +281,26 @@ class FinanceGraph:
             if '机构类别' in data:
                 institution_categories.append(data['机构类别'])
                 rels_institution_category.append([data['发行机构'], data['机构类别']])
+                for data2 in jsonData2:
+                    if '别名' in data2:
+                        if data2['别名'] in data['机构类别']:
+                            rels_institution_category.append([data['发行机构'], data2['别名']])
 
             if '发行机构' in data:
                 institutions.append(data['发行机构'])
-                if '农业银行' in data['发行机构']:
-                    banks.append('农业银行')
-                    rels_institution_bank.append([data['发行机构'], '农业银行'])
-                elif '汇丰银行' in data['发行机构']:
-                    banks.append('汇丰银行')
-                    rels_institution_bank.append([product, '汇丰银行'])
-                elif '招商银行' in data['发行机构']:
-                    banks.append('招商银行')
-                    rels_institution_bank.append([product, '招商银行'])
+                for data1 in jsonData1:
+                    if data1['名称'] in data['发行机构']:
+                        banks.append(data1['名称'])
+                        rels_institution_bank.append([data['发行机构'], data1['名称']])
                 rels_product_institution.append([product, data['发行机构']])
+
+            if '托管机构' in data:
+                institutions.append(data['托管机构'])
+                for data1 in jsonData1:
+                    if data1['名称'] in data['托管机构']:
+                        banks.append(data1['名称'])
+                        rels_institution_bank.append([data['托管机构'], data1['名称']])
+                rels_product_institution_trusteeship.append([product, data['托管机构']])
 
             if '产品销售区域' in data:
                 for area in data['产品销售区域'].split(','):
@@ -255,6 +320,7 @@ class FinanceGraph:
             attribution_dict['名称'] = attribution
             attributions.append(attribution)
             attribution = data['别名']
+            attribution_dict['类别'] = ''
             attribution_dict['类别差异'] = ''
 
             # 属性添加
@@ -266,13 +332,16 @@ class FinanceGraph:
             if '类别差异' in data:
                 attribution_dict['类别差异'] = data['类别差异']
 
+            if '类别' in data:
+                attribution_dict['类别'] = data['类别']
+
             # 关系添加
             if '类别' in data:
                 for 类别 in data['类别'].split(','):
                     categories.append(类别)
                     rels_attribution_category.append([attribution, 类别])
                     for 类别_ in data['类别'].split(','):
-                        rels_other_category.append([类别, 类别_])
+                        rels_other_category.append([类别, 类别_, data['类别差异']])
 
             attribution_infos.append(attribution_dict)
 
@@ -287,6 +356,7 @@ class FinanceGraph:
             subbank_dict['名称'] = subbank
             subbanks.append(subbank)
             subbank_dict['区域'] = ''
+            subbank_dict['区域'] = ''
             subbank_dict['具体地址'] = ''
             subbank_dict['咨询电话'] = ''
 
@@ -294,17 +364,22 @@ class FinanceGraph:
             if '具体地址' in data:
                 subbank_dict['具体地址'] = data['具体地址']
 
-            if '咨询电话' in data:
+            if '电话' in data:
                 subbank_dict['咨询电话'] = data['电话']
 
             if '区域' in data:
                 subbank_dict['区域'] = data['区域']
-                rels_subbank_area.append([subbank, data['区域'].split('省')[0]])
 
             # 关系添加
             if '总行' in data:
                 banks.append(data['总行'])
                 rels_subbank_bank.append([subbank, data['总行']])
+
+            if '区域' in data:
+                areas.append(data['区域'].split('省')[0])
+                areas.append(data['区域'].split('省')[1][:-1])
+                rels_subbank_area.append([subbank, data['区域'].split('省')[0]])
+                rels_subbank_area.append([subbank, data['区域'].split('省')[1][:-1]])
 
             subbank_infos.append(subbank_dict)
 
@@ -322,6 +397,7 @@ class FinanceGraph:
             bank_dict['营业时间'] = ''
             bank_dict['客服电话'] = ''
             bank_dict['官网链接'] = ''
+            bank_dict['类型'] = ''
 
             # 属性添加
             if '别名' in data:
@@ -338,6 +414,11 @@ class FinanceGraph:
             if '官网链接' in data:
                 bank_dict['官网链接'] = data['官网链接']
 
+            # 关系添加
+            if '类型' in data:
+                institution_categories.append(data['类型'])
+                rels_institution_category.append([bank, data['类型']])
+
             bank_infos.append(bank_dict)
 
         count = 0
@@ -351,11 +432,15 @@ class FinanceGraph:
             proper_nouns.append(capital_operation)
             capital_operation_dict['名词'] = capital_operation
             capital_operation_dict['定义'] = ''
+            capital_operation_dict['别名'] = ''
 
             # 属性添加
-
             if '定义' in data:
                 capital_operation_dict['定义'] = data['定义']
+            if '别名' in data:
+                capital_operation_dict['别名'] = data['别名']
+                for 别名 in data['别名'].split(','):
+                    proper_nouns.append(别名)
 
             capital_operation_infos.append(capital_operation_dict)
 
@@ -370,11 +455,16 @@ class FinanceGraph:
             proper_nouns.append(cost)
             cost_dict['名词'] = cost
             cost_dict['定义'] = ''
+            cost_dict['别名'] = ''
 
             # 属性添加
 
             if '定义' in data:
                 cost_dict['定义'] = data['定义']
+            if '别名' in data:
+                cost_dict['别名'] = data['别名']
+                for 别名 in data['别名'].split(','):
+                    proper_nouns.append(别名)
 
             cost_infos.append(cost_dict)
 
@@ -389,17 +479,23 @@ class FinanceGraph:
             proper_nouns.append(disclosure_method)
             disclosure_method_dict['名词'] = disclosure_method
             disclosure_method_dict['定义'] = ''
+            disclosure_method_dict['别名'] = ''
 
             # 属性添加
-
             if '定义' in data:
                 disclosure_method_dict['定义'] = data['定义']
+            if '别名' in data:
+                disclosure_method_dict['别名'] = data['别名']
+                for 别名 in data['别名'].split(','):
+                    proper_nouns.append(别名)
 
             disclosure_method_infos.append(disclosure_method_dict)
 
         count = 0
         jsonFile = open('.\\json\\income_type.json', encoding='utf-8')
         jsonData = json.load(jsonFile)
+        jsonFile1 = open('.\\json\\user.json', encoding='utf-8')
+        jsonData1 = json.load(jsonFile1)
         for data in jsonData:
             income_type_dict = {}
             count += 1
@@ -420,11 +516,47 @@ class FinanceGraph:
                     categories_another_name.append(别名)
             if '特性' in data:
                 income_type_dict['特性'] = data['特性']
-
             if '适用人群' in data:
                 income_type_dict['适用人群'] = data['适用人群']
 
+
+            #关系添加
+            if '适用人群' in data:
+                for data1 in jsonData1:
+                    if data1['名词'] in data['适用人群']:
+                        rels_user_type.append([data['名词'], data1['名词']])
+                    if '别名' in data1:
+                        if data1['别名'] in data['适用人群']:
+                            rels_user_type.append([data['名词'], data1['别名']])
+
             income_type_infos.append(income_type_dict)
+
+        count = 0
+        jsonFile = open('.\\json\\user.json', encoding='utf-8')
+        jsonData = json.load(jsonFile)
+        for data in jsonData:
+            user_dict = {}
+            count += 1
+            print("user_node:", count)
+            user = data['名词']
+            proper_nouns.append(user)
+            categories.append(user)
+            user_dict['名词'] = user
+            users.append(user)
+            user_dict['定义'] = ''
+            user_dict['别名'] = ''
+
+            # 属性添加
+            if '别名' in data:
+                user_dict['别名'] = data['别名']
+                for 别名 in data['别名'].split(','):
+                    users_another_name.append(别名)
+            if '定义' in data:
+                user_dict['定义'] = data['定义']
+
+            user_infos.append(user_dict)
+
+
 
         count = 0
         jsonFile = open('.\\json\\institution_category.json', encoding='utf-8')
@@ -454,6 +586,8 @@ class FinanceGraph:
         count = 0
         jsonFile = open('.\\json\\investment_nature.json', encoding='utf-8')
         jsonData = json.load(jsonFile)
+        jsonFile1 = open('.\\json\\user.json', encoding='utf-8')
+        jsonData1 = json.load(jsonFile1)
         for data in jsonData:
             investment_nature_dict = {}
             count += 1
@@ -482,7 +616,43 @@ class FinanceGraph:
             if '适用人群' in data:
                 investment_nature_dict['适用人群'] = data['适用人群']
 
+            #关系添加
+            if '适用人群' in data:
+                for data1 in jsonData1:
+                    if data1['名词'] in data['适用人群']:
+                        rels_user_type.append([data['名词'], data1['名词']])
+                        if '别名' in data1:
+                            if data1['别名'] in data['适用人群']:
+                                rels_user_type.append([data['名词'], data1['别名']])
             investment_nature_infos.append(investment_nature_dict)
+
+
+        count = 0
+        jsonFile = open('.\\json\\investment.json', encoding='utf-8')
+        jsonData = json.load(jsonFile)
+        for data in jsonData:
+            investment_dict = {}
+            count += 1
+            print("investment_node:", count)
+            investment = data['名词']
+            investment_dict['名词'] = investment
+            investments.append(investment)
+            investment_dict['代码'] = ''
+            investment_dict['类型'] = ''
+
+            # 属性添加
+            if '代码' in data:
+                investment_dict['代码'] = data['代码']
+                investments.append(data['代码'])
+
+
+            #关系添加
+            if '类型' in data:
+                rels_investment_type1.append([data['名词'], data['类型']])
+
+            investment_infos.append(investment_dict)
+
+
 
         count = 0
         jsonFile = open('.\\json\\liquidity_arrangement.json', encoding='utf-8')
@@ -495,11 +665,16 @@ class FinanceGraph:
             proper_nouns.append(liquidity_arrangement)
             liquidity_arrangement_dict['名词'] = liquidity_arrangement
             liquidity_arrangement_dict['定义'] = ''
+            liquidity_arrangement_dict['别名'] = ''
 
             # 属性添加
 
             if '定义' in data:
                 liquidity_arrangement_dict['定义'] = data['定义']
+            if '别名' in data:
+                liquidity_arrangement_dict['别名'] = data['别名']
+                for 别名 in data['别名'].split(','):
+                    proper_nouns.append(别名)
 
             liquidity_arrangement_infos.append(liquidity_arrangement_dict)
 
@@ -515,18 +690,25 @@ class FinanceGraph:
             management_subject_dict['名词'] = management_subject
             management_subject_dict['定义'] = ''
             management_subject_dict['特性'] = ''
+            management_subject_dict['别名'] = ''
 
             # 属性添加
             if '定义' in data:
                 management_subject_dict['定义'] = data['定义']
             if '特性' in data:
                 management_subject_dict['特性'] = data['特性']
+            if '别名' in data:
+                management_subject_dict['别名'] = data['别名']
+                for 别名 in data['别名'].split(','):
+                    proper_nouns.append(别名)
 
             management_subject_infos.append(management_subject_dict)
 
         count = 0
         jsonFile = open('.\\json\\open_form.json', encoding='utf-8')
         jsonData = json.load(jsonFile)
+        jsonFile1 = open('.\\json\\user.json', encoding='utf-8')
+        jsonData1 = json.load(jsonFile1)
         for data in jsonData:
             open_form_dict = {}
             count += 1
@@ -555,11 +737,22 @@ class FinanceGraph:
             if '适用人群' in data:
                 open_form_dict['适用人群'] = data['适用人群']
 
+            #关系添加
+            if '适用人群' in data:
+                for data1 in jsonData1:
+                    if data1['名词'] in data['适用人群']:
+                        rels_user_type.append([data['名词'], data1['名词']])
+                    if '别名' in data1:
+                        if data1['别名'] in data['适用人群']:
+                            rels_user_type.append([data['名词'], data1['别名']])
+
             open_form_infos.append(open_form_dict)
 
         count = 0
         jsonFile = open('.\\json\\operation.json', encoding='utf-8')
         jsonData = json.load(jsonFile)
+        jsonFile1 = open('.\\json\\user.json', encoding='utf-8')
+        jsonData1 = json.load(jsonFile1)
         for data in jsonData:
             operation_dict = {}
             count += 1
@@ -572,6 +765,7 @@ class FinanceGraph:
             operation_dict['别名'] = ''
             operation_dict['开放形态'] = ''
             operation_dict['产品类型'] = ''
+            operation_dict['适用人群'] = ''
 
             # 属性添加
             if '别名' in data:
@@ -584,6 +778,18 @@ class FinanceGraph:
 
             if '产品类型' in data:
                 operation_dict['产品类型'] = data['产品类型']
+
+            if '适用人群' in data:
+                operation_dict['适用人群'] = data['适用人群']
+
+            #关系添加
+            if '适用人群' in data:
+                for data1 in jsonData1:
+                    if data1['名词'] in data['适用人群']:
+                        rels_user_type.append([data['名词'], data1['名词']])
+                        if '别名' in data1:
+                            if data1['别名'] in data['适用人群']:
+                                rels_user_type.append([data['名词'], data1['别名']])
 
             operation_infos.append(operation_dict)
 
@@ -598,11 +804,16 @@ class FinanceGraph:
             proper_nouns.append(product_element)
             product_element_dict['名词'] = product_element
             product_element_dict['定义'] = ''
+            product_element_dict['别名'] = ''
 
             # 属性添加
 
             if '定义' in data:
                 product_element_dict['定义'] = data['定义']
+            if '别名' in data:
+                product_element_dict['别名'] = data['别名']
+                for 别名 in data['别名'].split(','):
+                    proper_nouns.append(别名)
 
             product_element_infos.append(product_element_dict)
 
@@ -714,6 +925,8 @@ class FinanceGraph:
         count = 0
         jsonFile = open('.\\json\\type.json', encoding='utf-8')
         jsonData = json.load(jsonFile)
+        jsonFile1 = open('.\\json\\user.json', encoding='utf-8')
+        jsonData1 = json.load(jsonFile1)
         for data in jsonData:
             type_dict = {}
             count += 1
@@ -743,11 +956,20 @@ class FinanceGraph:
             if '适用人群' in data:
                 type_dict['适用人群'] = data['适用人群']
 
+            #关系添加
+            if '适用人群' in data:
+                for data1 in jsonData1:
+                    if data1['名词'] in data['适用人群']:
+                        rels_user_type.append([data['名词'], data1['名词']])
+                        if '别名' in data1:
+                            if data1['别名'] in data['适用人群']:
+                                rels_user_type.append([data['名词'], data1['别名']])
+
             type_infos.append(type_dict)
 
-        return set(products), set(registration_codes), set(banks), set(areas), set(subbanks), set(investments), set(investment_types), set(operations), set(raise_ways), set(risk_levels), set(investment_natures), set(income_types), set(institution_categories), set(institutions), set(proper_nouns), set(open_forms), set(types), set(banks_another_name), set(attributions), set(attributions_another_name), set(categories), set(categories_another_name), \
-               product_infos, bank_infos, subbank_infos, investment_infos, investment_nature_infos, investment_type_infos, operation_infos, income_type_infos, raise_way_infos, risk_level_infos, institution_category_infos, cost_infos, disclosure_method_infos, liquidity_arrangement_infos, product_element_infos, capital_operation_infos, risk_infos, management_subject_infos, open_form_infos, type_infos, attribution_infos ,\
-               rels_area, rels_subbank_area, rels_subbank_bank, rels_investment_nature, rels_investment_type, rels_operation, rels_income_type, rels_raise_way, rels_risk_level, rels_product_institution, rels_institution_category, rels_institution_bank, rels_open_form, rels_type, rels_attribution_category, rels_other_category
+        return set(products), set(registration_codes), set(banks), set(areas), set(subbanks), set(investments), set(investment_types), set(operations), set(raise_ways), set(risk_levels), set(investment_natures), set(income_types), set(institution_categories), set(institutions), set(proper_nouns), set(open_forms), set(types), set(banks_another_name), set(attributions), set(attributions_another_name), set(categories), set(categories_another_name), set(users),set(users_another_name),\
+               product_infos, bank_infos, subbank_infos, investment_infos, investment_nature_infos, investment_type_infos, operation_infos, income_type_infos, raise_way_infos, risk_level_infos, institution_category_infos, cost_infos, disclosure_method_infos, liquidity_arrangement_infos, product_element_infos, capital_operation_infos, risk_infos, management_subject_infos, open_form_infos, type_infos, attribution_infos ,user_infos,\
+               rels_area, rels_subbank_area, rels_subbank_bank, rels_investment_nature, rels_investment_type, rels_operation, rels_income_type, rels_raise_way, rels_risk_level, rels_product_institution, rels_institution_category, rels_institution_bank, rels_open_form, rels_type, rels_attribution_category, rels_other_category, rels_product_institution_trusteeship, rels_user_type, rels_attribution_category, rels_other_category, rels_investment_type1
 
     # 建立产品节点
     def create_product_nodes(self, product_infos):
@@ -774,7 +996,9 @@ class FinanceGraph:
                         最近一次兑付收益率=product_dict['最近一次兑付收益率'],
                         预期最高收益率=product_dict['预期最高收益率'],
                         预期最低收益率=product_dict['预期最低收益率'],
-                        认购价格=product_dict['认购价格'])
+                        认购价格=product_dict['认购价格'],
+                        资金投向地区=product_dict['资金投向地区'],
+                        投资资产种类及比例=product_dict['投资资产种类及比例'])
             self.g.create(node)
             count += 1
             print("产品节点：", count)
@@ -788,7 +1012,7 @@ class FinanceGraph:
                         名称=bank_dict['名称'],
                         营业时间=bank_dict['营业时间'],
                         客服电话=bank_dict['客服电话'],
-                        官网链接=bank_dict['官网链接'])
+                        官网链接=bank_dict['官网链接'],)
             self.g.create(node)
             count += 1
             print("银行节点：", count)
@@ -815,7 +1039,24 @@ class FinanceGraph:
             node = Node('产品属性',
                         名称=attribution_dict['名称'],
                         别名=attribution_dict['别名'],
-            类别差异 = attribution_dict['类别差异'])
+                        类别差异=attribution_dict['类别差异'],
+                        类别=attribution_dict['类别'],
+                        )
+            self.g.create(node)
+            count += 1
+            # print(count, len(nodes))
+        return
+    
+    
+    # 建立投资资产节点
+    def create_investment_nodes(self, investment_infos):
+        count = 0
+        for investment_dict in investment_infos:
+            node = Node('投资资产',
+                        名称=investment_dict['名词'],
+                        代码=investment_dict['代码'],
+                        类型=investment_dict['类型'],
+                        )
             self.g.create(node)
             count += 1
             # print(count, len(nodes))
@@ -850,6 +1091,15 @@ class FinanceGraph:
             # print(count, len(nodes))
         return
 
+    def create_node12(self, label1, nodes):
+        count = 0
+        for node_dict in nodes:
+            node = Node(label1, 名词=node_dict['名词'], 别名=node_dict['别名'], 定义=node_dict['定义'])
+            self.g.create(node)
+            count += 1
+            # print(count, len(nodes))
+        return
+
     # 建立节点2
     def create_node2(self, label1, label2, nodes):
         count = 0
@@ -877,18 +1127,18 @@ class FinanceGraph:
         count = 0
         for node_dict in nodes:
             node = Node(label1, label2, 名词=node_dict['名词'], 别名=node_dict['别名'],
-                        开放形态=node_dict['开放形态'], 产品类型=node_dict['产品类型'])
+                        开放形态=node_dict['开放形态'], 产品类型=node_dict['产品类型'],适用人群=node_dict['适用人群'])
             self.g.create(node)
             count += 1
             # print(count, len(nodes))
         return
 
     # 建立节点5
-    def create_node5(self, label, nodes):
+    def create_node5(self, label1,label2, nodes):
         count = 0
         for node_dict in nodes:
-            node = Node(label, 名词=node_dict['名词'],
-                        定义=node_dict['定义'], 特性=node_dict['特性'])
+            node = Node(label1, label2, 名词=node_dict['名词'],
+                        定义=node_dict['定义'], 特性=node_dict['特性'],别名=node_dict['别名'])
             self.g.create(node)
             count += 1
             # print(count, len(nodes))
@@ -907,26 +1157,27 @@ class FinanceGraph:
 
     # 创建知识图谱实体节点类型schema
     def create_graphnodes(self):
-        products, registration_codes, banks, areas, subbanks, investments, investment_types, operations, raise_ways, risk_levels, investment_natures, income_types, institution_categories, institutions, proper_nouns, open_forms, types, banks_another_name, attributions, attributions_another_name, categories, categories_another_name, \
-        product_infos, bank_infos, subbank_infos, investment_infos, investment_nature_infos, investment_type_infos, operation_infos, income_type_infos, raise_way_infos, risk_level_infos, institution_category_infos, cost_infos, disclosure_method_infos, liquidity_arrangement_infos, product_element_infos, capital_operation_infos, risk_infos, management_subject_infos,open_form_infos, type_infos,  attribution_infos, \
-        rels_area, rels_subbank_area, rels_subbank_bank, rels_investment_nature, rels_investment_type, rels_operation, rels_income_type, rels_raise_way, rels_risk_level, rels_product_institution, rels_institution_category, rels_institution_bank, rels_open_form, rels_type, rels_attribution_category, rels_other_category = self.read_nodes()
+        products, registration_codes, banks, areas, subbanks, investments, investment_types, operations, raise_ways, risk_levels, investment_natures, income_types, institution_categories, institutions, proper_nouns, open_forms, types, banks_another_name, attributions, attributions_another_name, categories,  categories_another_name, users, users_another_name, \
+        product_infos, bank_infos, subbank_infos, investment_infos, investment_nature_infos, investment_type_infos, operation_infos, income_type_infos, raise_way_infos, risk_level_infos, institution_category_infos, cost_infos, disclosure_method_infos, liquidity_arrangement_infos, product_element_infos, capital_operation_infos, risk_infos, management_subject_infos, open_form_infos, type_infos, attribution_infos, user_infos, \
+        rels_area, rels_subbank_area, rels_subbank_bank, rels_investment_nature, rels_investment_type, rels_operation, rels_income_type, rels_raise_way, rels_risk_level, rels_product_institution, rels_institution_category, rels_institution_bank, rels_open_form, rels_type, rels_attribution_category, rels_other_category, rels_product_institution_trusteeship, rels_user_type, rels_attribution_category, rels_other_category,rels_investment_type1 = self.read_nodes()
         self.create_product_nodes(product_infos)
         self.create_bank_nodes(bank_infos)
         self.create_subbank_nodes(subbank_infos)
         self.create_attribution_nodes(attribution_infos)
+        self.create_investment_nodes(investments)
 
         self.create_node('区域', areas)
-        self.create_node('投资资产', investments)
-        self.create_node('发行机构', institutions)
+        self.create_node('发行/托管机构', institutions)
 
         self.create_node1('风险', risk_infos)
-        self.create_node1('费用', cost_infos)
-        self.create_node1('产品要素', product_element_infos)
-        self.create_node1('资产运作', capital_operation_infos)
-        self.create_node1('信息披露', disclosure_method_infos)
-        self.create_node1('流动性安排', liquidity_arrangement_infos)
+        self.create_node12('费用', cost_infos)
+        self.create_node12('产品要素', product_element_infos)
+        self.create_node12('资产运作', capital_operation_infos)
+        self.create_node12('信息披露', disclosure_method_infos)
+        self.create_node12('流动性安排', liquidity_arrangement_infos)
         self.create_node11('机构类别', '属性类别', institution_category_infos)
         self.create_node11('投资资产类型', '属性类别', investment_type_infos)
+        self.create_node11('用户类型', '属性类别', user_infos)
 
         self.create_node2('募集方式', '属性类别', raise_way_infos)
         self.create_node2('开放形态', '属性类别', open_form_infos)
@@ -935,32 +1186,36 @@ class FinanceGraph:
 
         self.create_node3('收益类型', '属性类别', income_type_infos)
         self.create_node4('运作模式', '属性类别', operation_infos)
-        self.create_node5('管理主体', management_subject_infos)
+        self.create_node5('管理主体', '属性类别',  management_subject_infos)
         self.create_node6('风险等级', '属性类别', risk_level_infos)
-        # 投资资产未创建
+
         return
 
     # 创建实体关系边
     def create_graphrels(self):
-        products, registration_codes, banks, areas, subbanks, investments, investment_types, operations, raise_ways, risk_levels, investment_natures, income_types, institution_categories, institutions, proper_nouns, open_forms, types, banks_another_name, attributions, attributions_another_name, categories, categories_another_name, \
-        product_infos, bank_infos, subbank_infos, investment_infos, investment_nature_infos, investment_type_infos, operation_infos, income_type_infos, raise_way_infos, risk_level_infos, institution_category_infos, cost_infos, disclosure_method_infos, liquidity_arrangement_infos, product_element_infos, capital_operation_infos, risk_infos, management_subject_infos,open_form_infos, type_infos,  attribution_infos, \
-        rels_area, rels_subbank_area, rels_subbank_bank, rels_investment_nature, rels_investment_type, rels_operation, rels_income_type, rels_raise_way, rels_risk_level, rels_product_institution, rels_institution_category, rels_institution_bank, rels_open_form, rels_type, rels_attribution_category, rels_other_category = self.read_nodes()
+        products, registration_codes, banks, areas, subbanks, investments, investment_types, operations, raise_ways, risk_levels, investment_natures, income_types, institution_categories, institutions, proper_nouns, open_forms, types, banks_another_name, attributions, attributions_another_name, categories,  categories_another_name, users, users_another_name, \
+        product_infos, bank_infos, subbank_infos, investment_infos, investment_nature_infos, investment_type_infos, operation_infos, income_type_infos, raise_way_infos, risk_level_infos, institution_category_infos, cost_infos, disclosure_method_infos, liquidity_arrangement_infos, product_element_infos, capital_operation_infos, risk_infos, management_subject_infos, open_form_infos, type_infos, attribution_infos, user_infos, \
+        rels_area, rels_subbank_area, rels_subbank_bank, rels_investment_nature, rels_investment_type, rels_operation, rels_income_type, rels_raise_way, rels_risk_level, rels_product_institution, rels_institution_category, rels_institution_bank, rels_open_form, rels_type, rels_attribution_category, rels_other_category, rels_product_institution_trusteeship, rels_user_type, rels_attribution_category, rels_other_category,rels_investment_type1 = self.read_nodes()
         self.create_relationship('理财产品', '区域', rels_area, '销售地区', '销售地区',3)
         self.create_relationship('支行', '区域', rels_subbank_area, '所在区域', '所在区域',2)
         self.create_relationship('支行', '银行', rels_subbank_bank, '所属总行', '所属总行',2)
         self.create_relationship('理财产品', '投资性质', rels_investment_nature, '投资性质属于', '投资性质属于',0)
-        self.create_relationship('理财产品', '投资资产类型', rels_investment_type, '投资资产的类型属于', '投资资产,0的类型属于')
+        self.create_relationship('理财产品', '投资资产类型', rels_investment_type, '投资资产的类型属于', '投资资产的类型属于',0)
         self.create_relationship('理财产品', '运作模式', rels_operation, '运作模式属于', '运作模式属于',0)
         self.create_relationship('理财产品', '收益类型', rels_income_type, '收益类型属于', '收益类型属于',0)
         self.create_relationship('理财产品', '募集方式', rels_raise_way, '募集方式属于', '募集方式属于',0)
         self.create_relationship('理财产品', '风险等级', rels_risk_level, '风险等级属于', '风险等级属于',0)
-        self.create_relationship('理财产品', '发行机构', rels_product_institution, '发行机构属于', '发行机构属于',3)
-        self.create_relationship('理财产品', '机构类别', rels_institution_category, '发行机构类别属于', '发行机构类别属于',0)
-        self.create_relationship('发行机构', '总行', rels_institution_bank, '所属总行', '所属总行',2)
+        self.create_relationship('理财产品', '发行/托管机构', rels_product_institution, '发行机构属于', '发行机构属于',3)
+        self.create_relationship('理财产品', '发行/托管机构', rels_product_institution_trusteeship, '托管机构属于', '托管机构属于',3)
+        self.create_relationship('发行/托管机构', '机构类别', rels_institution_category, '机构类别属于', '发行机构类别属于',0)
+        self.create_relationship('银行', '机构类别', rels_institution_category, '机构类别属于', '银行类别属于',0)
+        self.create_relationship('发行/托管机构', '银行', rels_institution_bank, '所属总行', '所属总行',2)
         self.create_relationship('理财产品', '开放形态', rels_open_form, '开放形态属于', '开放形态属于',0)
         self.create_relationship('理财产品', '产品类型', rels_type, '所属类型', '所属类型',0)
+        self.create_relationship('属性类别', '用户类型', rels_user_type, '适用人群', '适用人群',4)
         self.create_relationship('产品属性', '属性类别', rels_attribution_category, '含有类别', '含有类别',1)
-        self.create_relationship('属性类别', '属性类别', rels_other_category, '相关类别', '相关类别',4)
+        self.create_relationship('属性类别', '属性类别', rels_other_category, '相关类别', '相关类别',5)
+        self.create_relationship('投资资产', '投资资产类型', rels_investment_type1, '所属投资资产类型', '所属投资资产类型',4)
         return
 
     # 创建实体关联边
@@ -991,6 +1246,10 @@ class FinanceGraph:
             elif n == 4:
                 query = "match(p:%s),(q:%s) where p.名词='%s'and q.名词='%s' create (p)-[rel:%s{name:'%s'}]->(q)" % (
                     start_node, end_node, p, q, rel_type, rel_name)
+            elif n == 5:
+                a = edge[2]
+                query = "match(p:%s),(q:%s) where p.名词='%s'and q.名词='%s' create (p)-[rel:%s{name:'%s',different:'%s}]->(q)" % (
+                    start_node, end_node, p, q, rel_type, rel_name,a)
             try:
                 self.g.run(query)
                 count += 1
@@ -1001,9 +1260,9 @@ class FinanceGraph:
 
     # 导出数据
     def export_data(self):
-        products, registration_codes, banks, areas, subbanks, investments, investment_types, operations, raise_ways, risk_levels, investment_natures, income_types, institution_categories, institutions, proper_nouns, open_forms, types, banks_another_name, attributions, attributions_another_name, categories, categories_another_name, \
-        product_infos, bank_infos, subbank_infos, investment_infos, investment_nature_infos, investment_type_infos, operation_infos, income_type_infos, raise_way_infos, risk_level_infos, institution_category_infos, cost_infos, disclosure_method_infos, liquidity_arrangement_infos, product_element_infos, capital_operation_infos, risk_infos, management_subject_infos,open_form_infos, type_infos,  attribution_infos, \
-        rels_area, rels_subbank_area, rels_subbank_bank, rels_investment_nature, rels_investment_type, rels_operation, rels_income_type, rels_raise_way, rels_risk_level, rels_product_institution, rels_institution_category, rels_institution_bank, rels_open_form, rels_type, rels_attribution_category, rels_other_category = self.read_nodes()
+        products, registration_codes, banks, areas, subbanks, investments, investment_types, operations, raise_ways, risk_levels, investment_natures, income_types, institution_categories, institutions, proper_nouns, open_forms, types, banks_another_name, attributions, attributions_another_name, categories,  categories_another_name, users, users_another_name, \
+        product_infos, bank_infos, subbank_infos, investment_infos, investment_nature_infos, investment_type_infos, operation_infos, income_type_infos, raise_way_infos, risk_level_infos, institution_category_infos, cost_infos, disclosure_method_infos, liquidity_arrangement_infos, product_element_infos, capital_operation_infos, risk_infos, management_subject_infos, open_form_infos, type_infos, attribution_infos, user_infos, \
+        rels_area, rels_subbank_area, rels_subbank_bank, rels_investment_nature, rels_investment_type, rels_operation, rels_income_type, rels_raise_way, rels_risk_level, rels_product_institution, rels_institution_category, rels_institution_bank, rels_open_form, rels_type, rels_attribution_category, rels_other_category, rels_product_institution_trusteeship, rels_user_type, rels_attribution_category, rels_other_category,rels_investment_type1 = self.read_nodes()
         f_product = open('./dict/product.txt', 'w+', encoding="utf-8")
         f_bank = open('./dict/bank.txt', 'w+', encoding="utf-8")
         f_area = open('./dict/area.txt', 'w+', encoding="utf-8")
@@ -1022,6 +1281,7 @@ class FinanceGraph:
         f_type = open('./dict/type.txt', 'w+', encoding="utf-8")
         f_attribution = open('./dict/attribution.txt', 'w+', encoding="utf-8")
         f_category = open('./dict/category.txt', 'w+', encoding="utf-8")
+        f_user = open('./dict/user.txt', 'w+', encoding="utf-8")
 
 
         print('\n'.join(list(products)))
@@ -1072,6 +1332,10 @@ class FinanceGraph:
         f_category.write('\n')
         f_category.write('\n'.join(list(categories_another_name)))
 
+        f_user.write('\n'.join(list(users)))
+        f_user.write('\n')
+        f_user.write('\n'.join(list(users_another_name)))
+
         f_product.close()
         f_bank.close()
         f_area.close()
@@ -1090,8 +1354,7 @@ class FinanceGraph:
         f_type.close()
         f_attribution.close()
         f_category.close()
-
-
+        f_user.close()
         return
 
 
