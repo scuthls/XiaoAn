@@ -5,7 +5,7 @@
 #文件名称:ts
 #开发工具:PyCharm
 import tushare as ts
-import matplotlib.pyplot as plt
+from datetime import *
 # data = ts.get_hist_data('600848')
 
 import matplotlib.pyplot as plt
@@ -14,8 +14,23 @@ import numpy as np
 import pandas as pd
 from matplotlib.pylab import date2num
 
-def K(ts_code,start_date,end_date):
-    print("请在股票代码后加上交易所缩写：如000001.SZ、600000.SH（仅支持这两个交易所的股票查询）；日期格式参考20180701")
+
+def K(ts_code,type):
+    if type == 0 :
+        date = '年'
+        end_date = datetime.now().strftime('%Y%m%d')
+        delta = timedelta(days=365)
+        start_date = (datetime.now() - delta).strftime('%Y%m%d')
+    elif type == 1:
+        date = '月'
+        end_date = datetime.now().strftime('%Y%m%d')
+        delta = timedelta(days=31)
+        start_date = (datetime.now() - delta).strftime('%Y%m%d')
+    else:
+        date = '周'
+        end_date = datetime.now().strftime('%Y%m%d')
+        delta = timedelta(days=7)
+        start_date = (datetime.now() - delta).strftime('%Y%m%d')
     token="d078bd5a718954f48ee1f41013279afae62d1affd0866b56658cd918"
     ts.set_token(token)
     pro = ts.pro_api()
@@ -33,10 +48,24 @@ def K(ts_code,start_date,end_date):
     data_mat=data.values
     # print(data_mat)
     #绘制图片
+    plt.rcParams['font.sans-serif'] = ['SimHei']  # 用来正常显示中文标签
+    plt.rcParams['axes.unicode_minus'] = False  # 用来正常显示负号
     fig,ax=plt.subplots(figsize=(1200/72,480/72))
     fig.subplots_adjust(bottom=0.1)
+    fig.suptitle(r'{0}的{1}K线图'.format(ts_code,date), fontsize=20.00)
     mpf.candlestick_ochl(ax,data_mat,colordown='#53c156', colorup='#ff1717',width=0.3,alpha=1)
     ax.grid(True)
     ax.xaxis_date()
-    plt.savefig('./K线图.jpg')
-    plt.show()
+    plt.savefig(r'./{0}的{1}K线图.jpg'.format(ts_code,date))
+
+
+
+
+if __name__ == '__main__':
+    ts_code = input("请在股票代码后加上交易所缩写如000001.SZ、600000.SH（仅支持这两个交易所的股票查询）：")   #例如输入000001.SZ
+    #画年K线图
+    K(ts_code,0)  #0代表画年K线图
+    #画月K线图
+    K(ts_code,1)   #1代表画月K线图
+    #画周K线图
+    K(ts_code,2)   #1代表画月K线图
