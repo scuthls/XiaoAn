@@ -39,7 +39,7 @@ class AnswerSearcher:
             else:
                 final_answer = '该产品未在理财系统查询到登记编码，无登记编码均不属于正规银行理财产品！'
 
-        elif question_type == 'explanation_attribution':
+        elif question_type == 'explanation_category':
             name = answers[0]['m.名词']
             desc = ''
             nature = ''
@@ -58,7 +58,7 @@ class AnswerSearcher:
             desc = answers[0]['m.定义']
             final_answer = '{0}的定义为：{1}'.format(name, desc)
 
-        elif question_type == 'notice_attribution':
+        elif question_type == 'notice_category':
             print(question_type)
             print(answers)
             name = answers[0]['m.名词']
@@ -91,6 +91,13 @@ class AnswerSearcher:
                     pass
 
                 final_answer += '{0}产品需要注意的事项有:\n{1}{2}{3}{4}{5}'.format(name, desc, nature, user, openform, type)
+
+        elif question_type == 'notice_attribution':
+            attribution = answers[0]['m.名称']
+            diff = answers[0]['m.类别差异']
+            cate = answers[0]['m.类别']
+            subject = [i['n.名词'] for i in answers]
+            final_answer = '{0}需要注意的事项有:\n（1）{0}含有的类别有：{1}。\n（2）类别差异为：{2}。'.format(attribution, '、'.join(list(set(subject))), cate, diff)
 
         elif question_type == 'notice_product':
             name = answers[0]['m.产品名称']
@@ -155,7 +162,31 @@ class AnswerSearcher:
                 subject = answers[1]['m.咨询电话']
             except:
                 pass
-            final_answer = '{0}的咨询电话为：{1}。'.format(name, subject)
+            final_answer += '{0}的咨询电话为：{1}。'.format(name, subject)
+
+        elif question_type =='bank_product':
+            bank = answers[0]['m.名称']
+            print(answers)
+            state = [i['n.产品状态'] for i in answers]
+            product = [i['n.产品名称'] for i in answers]
+            final_answer = '以下为{0}最新的5款产品：'.format(bank)
+            list_zip = list(zip(product, state))
+            order = 0
+            for i in list_zip:
+                order += 1
+                final_answer += '\n（{0}）{1}，产品状态为：{2}'.format(order,i[0], i[1])
+
+        elif question_type =='bank_category_product':
+            bank = answers[0]['m.名称']
+            cate = answers[0]['p.名词']
+            state = [i['n.产品状态'] for i in answers]
+            product = [i['n.产品名称'] for i in answers]
+            final_answer = '以下为{0}最新的5款{1}产品：'.format(bank,cate)
+            list_zip = list(zip(product, state))
+            order = 0
+            for i in list_zip:
+                order += 1
+                final_answer += '\n（{0}）{1}，产品状态为：{2}'.format(order,i[0], i[1])
 
         elif question_type == 'product_desc':
             name = answers[0]['m.产品名称']
@@ -229,8 +260,10 @@ class AnswerSearcher:
 
         elif question_type == 'attribution_infos':
             attribution = answers[0]['m.名称']
+            diff = answers[0]['m.类别差异']
+            cate = answers[0]['m.类别']
             subject = [i['n.名词'] for i in answers]
-            final_answer = '{0}含有的类别有：{1}'.format(attribution, '、'.join(list(set(subject))))
+            final_answer = '{0}:\n（1）{0}含有的类别有：{1}。\n（2）类别差异为：{2}。'.format(attribution, '、'.join(list(set(subject))), cate, diff)
 
         elif question_type == 'product_number':
             bank = answers[0]['m.名称']
@@ -238,6 +271,20 @@ class AnswerSearcher:
             state = [i['n.产品状态'] for i in answers]
             count = [i['count(n)'] for i in answers]
             final_answer += '{0}：'.format(bank)
+            list_zip = list(zip(state, count))
+            count_all = 0
+            for i in list_zip:
+                count_all +=i[1]
+                final_answer += '\n{0}产品有{1}个，'.format(i[0], i[1])
+            final_answer += '\n所有产品总数为{0}个。'.format(count_all)
+
+        elif question_type == 'product_category_number':
+            bank = answers[0]['m.名称']
+            cate = answers[0]['p.名词']
+            print(answers)
+            state = [i['n.产品状态'] for i in answers]
+            count = [i['count(n)'] for i in answers]
+            final_answer += '{0}{1}产品情况：'.format(bank,cate)
             list_zip = list(zip(state, count))
             count_all = 0
             for i in list_zip:

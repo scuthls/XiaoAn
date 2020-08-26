@@ -133,8 +133,11 @@ class QuestionClassifier:
             question_types.append(question_type)
 
         # 名词解释问题      #你可以解释一下净值型产品是什么吗？
-        if self.check_words(self.explanation_qwds, question) and ('attribution' in types):
-            question_type = 'explanation_attribution'
+        if self.check_words(self.explanation_qwds, question) and ('category' in types):
+            question_type = 'explanation_category'
+            question_types.append(question_type)
+        elif self.check_words(self.explanation_qwds, question) and ('attribution' in types):
+            question_type = 'attribution_infos'
             question_types.append(question_type)
         elif self.check_words(self.explanation_qwds, question) and ('proper_noun' in types):
             question_type = 'explanation_noun'
@@ -143,10 +146,12 @@ class QuestionClassifier:
             question_type = 'explanation_common'
             question_types.append(question_type)
 
-        # 询问产品注意事项问题   #针对与购买产品的注意事项   针对与某一属性产品的注意事项   #C1080919000230需要注意什么？#封闭式净值型产品需要注意什么？ √
-        if self.check_words(self.notice_qwds, question) and ('proper_noun' in types):
-            question_type = 'notice_attribution'
+        # 询问产品注意事项问题   #针对与购买产品的注意事项   针对与某一属性产品的注意事项    #C1080919000230需要注意什么？#封闭式净值型产品需要注意什么？ √
+        if self.check_words(self.notice_qwds, question) and ('category' in types):
+            question_type = 'notice_category'
             question_types.append(question_type)
+        elif self.check_words(self.notice_qwds, question) and ('attribution' in types):
+            question_type = 'notice_attribution'
         elif self.check_words(self.notice_qwds, question) and ('product' in types):
             question_type = 'notice_product'
             question_types.append(question_type)
@@ -157,6 +162,14 @@ class QuestionClassifier:
         # 询问银行电话   #汇丰银行的电话？    √
         if self.check_words(self.call_qwds, question) and ('bank' in types or 'subbank' in types):
             question_type = 'call_number'
+            question_types.append(question_type)
+
+        # 询问银行产品   #汇丰银行的理财产品？
+        if ('bank' in types or 'subbank' in types) and ('产品' in question) and (not self.check_words(self.howmany_qwds, question)):
+            question_type = 'bank_product'
+            question_types.append(question_type)
+        elif ('bank' in types or 'subbank' in types) and ('category' in types) and (not self.check_words(self.howmany_qwds, question)):
+            question_type = 'bank_category_product'
             question_types.append(question_type)
 
         # 介绍产品概要信息    #你能给我介绍一下C1080919000230吗？ √
@@ -277,6 +290,10 @@ class QuestionClassifier:
         # 若没有查到相关的外部查询信息，那么则将该产品的描述信息返回
         if question_types == [] and ('product' in types) and ('attribution' not in types):
             question_types = ['product_desc']
+
+        # 若没有查到相关的外部查询信息，那么则将该类别的描述信息返回
+        if question_types == [] and ('category' in types) and ('attribution' not in types) and ('product' not in types):
+            question_types = ['explanation_category']
 
         # 若没有查到相关的外部查询信息，那么则将该属性的描述信息返回
         if question_types == [] and ('attribution' in types) and ('product' not in types) and ('proper_noun' not in types):

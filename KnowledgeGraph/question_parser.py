@@ -156,8 +156,8 @@ class QuestionPaser:
                    entities[0]]
 
         # 名词解释问题
-        elif question_type == 'explanation_attribution':
-            sql += ["MATCH (m:机构类别) where m.名词 = '{0}' or '{0}' in m.别名 return m.名词, m.定义".format(i) for i in entities[0]]
+        elif question_type == 'explanation_category':
+            sql = ["MATCH (m:机构类别) where m.名词 = '{0}' or '{0}' in m.别名 return m.名词, m.定义".format(i) for i in entities[0]]
             sql += ["MATCH (m:投资资产类型) where m.名词 = '{0}' or '{0}' in m.别名  return m.名词, m.定义".format(i) for i in entities[0]]
             sql += ["MATCH (m:募集方式) where m.名词 = '{0}' or '{0}' in m.别名  return m.名词, m.定义, m.特性, m.适用人群".format(i) for i in entities[0]]
             sql += ["MATCH (m:开放形态) where m.名词 = '{0}' or '{0}' in m.别名  return m.名词, m.定义, m.特性, m.适用人群".format(i) for i in entities[0]]
@@ -179,8 +179,8 @@ class QuestionPaser:
             sql += ["MATCH (m:风险) where m.名词 = '{0}' return m.名词, m.定义".format(i) for i in entities[0]]
 
         # 询问产品注意事项问题   针对与购买产品的注意事项  针对与某一属性产品的注意事项
-        elif question_type == 'notice_attribution':
-            sql += ["MATCH (m:机构类别) where m.名词 = '{0}' or '{0}' in m.别名 return m.名词, m.定义".format(i) for i in entities[0]]
+        elif question_type == 'notice_category':
+            sql = ["MATCH (m:机构类别) where m.名词 = '{0}' or '{0}' in m.别名 return m.名词, m.定义".format(i) for i in entities[0]]
             sql += ["MATCH (m:投资资产类型) where m.名词 = '{0}' or '{0}' in m.别名  return m.名词, m.定义".format(i) for i in entities[0]]
             sql += ["MATCH (m:募集方式) where m.名词 = '{0}' or '{0}' in m.别名  return m.名词, m.定义, m.特性, m.适用人群".format(i) for i in entities[0]]
             sql += ["MATCH (m:开放形态) where m.名词 = '{0}' or '{0}' in m.别名  return m.名词, m.定义, m.特性, m.适用人群".format(i) for i in entities[0]]
@@ -191,9 +191,11 @@ class QuestionPaser:
             sql += ["MATCH (m:管理主体) where m.名词 = '{0}' or '{0}' in m.别名  return m.名词, m.定义, m.特性".format(i) for i in entities[0]]
             sql += ["MATCH (m:风险等级) where m.名词 = '{0}' or '{0}' in m.别名  return m.名词, m.特性".format(i) for i in entities[0]]
 
+        elif question_type == 'notice_attribution':
+            sql = ["MATCH (m:产品属性)-[r:含有类别]-(n:属性类别) where m.名称 = '{0}' or  '{0}' in m.别名  return m.名称, m.类别差异 n.名词".format(i) for i in entities[0]]
 
         elif question_type == 'notice_product':
-            sql += [
+            sql = [
                 "MATCH (m:理财产品)-[]->(n:机构类别) where m.产品名称 = '{0}' or m.登记编码 = '{0}' return m.产品名称, n.名词, n.定义".format(i) for i in entities[0]]
             sql += [
                 "MATCH (m:理财产品)-[]->(n:投资资产类型) where m.产品名称 = '{0}' or m.登记编码 = '{0}' return m.产品名称, n.名词, n.定义".format(i) for i in entities[0]]
@@ -216,8 +218,14 @@ class QuestionPaser:
 
         # 询问银行电话
         elif question_type == 'call_number':
-            sql += ["MATCH (m:银行) where m.名称 CONTAINS '{0}' return m.名称, m.客服电话".format(i) for i in entities[0]]
+            sql = ["MATCH (m:银行) where m.名称 CONTAINS '{0}' return m.名称, m.客服电话".format(i) for i in entities[0]]
             sql += ["MATCH (m:支行) where m.名称 = '{0}' return m.名称, m.咨询电话".format(i) for i in entities[0]]
+
+        # 询问银行产品
+        elif question_type == 'bank_product':
+            sql = ["MATCH (n:理财产品)-[]->(m:发行/托管机构) where m.名称  CONTAINS '{0}' return m.名称, n.产品名称 n.产品状态 order by n.募集起始日期 desc limit 5".format(i) for i in entities[0]]
+        elif question_type == 'bank_category_product':
+            sql = ["MATCH (p:属性类别)-[]->(n:理财产品)-[]->(m:发行/托管机构) where m.名称  CONTAINS '{0}' and (p.名词 = '{1}' or '{1}' in p.别名)  return m.名称, n.产品名称 n.产品状态 p.名词 order by n.募集起始日期 desc limit 5".format(i,j) for i in entities[0] for j in entities[1]]
 
         # 介绍产品概要信息
         elif question_type == 'product_desc':
@@ -260,14 +268,16 @@ class QuestionPaser:
 
         # 询问理财产品某属性有哪些类
         elif question_type == 'attribution_infos':
-            sql = ["MATCH (m:产品属性)-[r:含有类别]->(n:属性类别) where m.名称 = '{0}' or  '{0}' in m.别名  return m.名称, n.名词".format(i) for i in
-                   entities[0]]
+            sql = ["MATCH (m:产品属性)-[r:含有类别]-(n:属性类别) where m.名称 = '{0}' or  '{0}' in m.别名  return m.名称, m.类别差异 n.名词".format(i) for i in entities[0]]
+
 
         # 询问某银行理财产品的数量 返回在售、预售、续存的数量以及总数
         elif question_type == 'product_number':
             # sql语句会返回不同产品状态的结果
             sql = ["MATCH (n:理财产品)-[]->(m:发行/托管机构) where m.名称  CONTAINS '{0}' return m.名称, count(n), n.产品状态".format(i) for i in
                    entities[0]]
+        elif question_type == 'product_category_number':
+            sql = ["MATCH (p:属性类别)-[]->(n:理财产品)-[]->(m:发行/托管机构) where m.名称  CONTAINS '{0}' and (p.名词 = '{1}' or '{1}' in p.别名) return m.名称, count(n), n.产品状态 p.名词".format(i,j) for i in entities[0] for j in entities[1]]
 
         # 询问某银行在某地区的总数
         elif question_type == 'subbank_number':
