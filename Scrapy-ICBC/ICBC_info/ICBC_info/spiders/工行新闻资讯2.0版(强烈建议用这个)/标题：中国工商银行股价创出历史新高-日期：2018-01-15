@@ -1,0 +1,11 @@
+
+
+					1月18日早盘，工商银行股价均创出历史新高，截至发稿，工商银行涨4.17%。此外，农业银行股价盘中也创出历史新高，最高触及4.34元，截至发稿涨1.9报4.3元。 
+
+					
+						var fanyeHtml=''+
+						'';
+						$(".article_con img").parent().addClass('fanyeHtml_a');
+						$(".article_con img").parent().append(fanyeHtml);
+					
+				

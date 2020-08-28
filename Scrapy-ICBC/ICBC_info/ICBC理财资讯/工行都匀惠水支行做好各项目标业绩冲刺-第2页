@@ -1,0 +1,18 @@
+
+
+					 
+关注手机金投银行（http://m.cngold.org/bank/），银行最新动态随时看。
+
+					
+						var fanyeHtml=''+
+						''+
+						''+
+						''+
+						'<a href="https://bank.cngold.org/c/2017-12-21/c5559708.html" class="prev_pic">上一页</a>'+
+						''+
+						''+
+						'';
+						$(".article_con img").parent().addClass('fanyeHtml_a');
+						$(".article_con img").parent().append(fanyeHtml);
+					
+				
